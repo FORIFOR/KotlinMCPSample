@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimal theme for testing -->
+    <style name="Theme.MCPSample" parent="android:Theme.DeviceDefault.Light">
+        <!-- No custom attributes to avoid conflicts -->
+    </style>
+</resources>

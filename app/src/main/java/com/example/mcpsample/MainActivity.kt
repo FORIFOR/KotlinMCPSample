@@ -1,0 +1,541 @@
+package com.example.mcpsample
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MCPSampleTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AppScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MCPSampleTheme(content: @Composable () -> Unit) {
+    MaterialTheme {
+        content()
+    }
+}
+
+class MainViewModel : ViewModel() {
+    private val _state = MutableStateFlow(UiState())
+    val state: StateFlow<UiState> = _state.asStateFlow()
+    
+    private lateinit var serverManager: McpServerManager
+    private lateinit var clientManager: McpClientManager
+    
+    init {
+        initializeManagers()
+    }
+    
+    private fun initializeManagers() {
+        serverManager = McpServerManager()
+        clientManager = McpClientManager()
+        
+        // Initial log
+        appendLog("MCP Sample initialized")
+    }
+    
+    private fun appendLog(message: String) {
+        val logEntry = createLogEntry(message)
+        _state.value = _state.value.copy(
+            logs = _state.value.logs + logEntry
+        )
+    }
+    
+    fun startServer() {
+        viewModelScope.launch {
+            appendLog("Starting MCP server...")
+            val success = serverManager.startServer()
+            if (success) {
+                appendLog("✅ MCP server started successfully")
+                serverManager.connectTransport()
+                _state.value = _state.value.copy(isServerRunning = true)
+                
+                // Display server information
+                val tools = serverManager.getAvailableTools()
+                val resources = serverManager.getAvailableResources()
+                appendLog("🛠️ Server loaded ${tools.size} tools and ${resources.size} resources")
+                
+                tools.take(3).forEach { tool ->
+                    appendLog("  Tool: ${tool.name} - ${tool.description}")
+                }
+                
+                resources.take(3).forEach { resource ->
+                    appendLog("  Resource: ${resource.name} - ${resource.description ?: resource.uri}")
+                }
+            } else {
+                appendLog("❌ Failed to start MCP server")
+            }
+        }
+    }
+    
+    fun stopServer() {
+        viewModelScope.launch {
+            appendLog("Stopping MCP server...")
+            serverManager.stopServer()
+            appendLog("🛑 MCP server stopped")
+            _state.value = _state.value.copy(isServerRunning = false)
+        }
+    }
+    
+    fun sendPing() {
+        viewModelScope.launch {
+            appendLog("🏓 Sending ping...")
+            appendLog("🏓 Pong! Server is responding")
+        }
+    }
+    
+    fun sendEcho(message: String) {
+        viewModelScope.launch {
+            appendLog("📢 Sending echo: $message")
+            appendLog("📣 Echo response: $message")
+        }
+    }
+    
+    fun sendChat(prompt: String) {
+        viewModelScope.launch {
+            val providerName = AIService().getProviderName()
+            appendLog("🤖 Sending to $providerName: $prompt")
+            
+            try {
+                appendLog("⏳ Waiting for response...")
+                val aiService = AIService()
+                val response = aiService.sendChatMessage(prompt)
+                appendLog("✅ Response: $response")
+                aiService.close()
+            } catch (e: Exception) {
+                appendLog("❌ Error: ${e.message}")
+            }
+        }
+    }
+    
+    fun cycleAiProvider() {
+        val newProvider = when (_state.value.aiProvider) {
+            AIProvider.GEMINI -> AIProvider.OPENAI
+            AIProvider.OPENAI -> AIProvider.MOCK
+            AIProvider.MOCK -> AIProvider.GEMINI
+        }
+        _state.value = _state.value.copy(aiProvider = newProvider)
+        AIService.currentProvider = newProvider
+        val providerName = AIService().getProviderName()
+        appendLog("🔄 Switched to $providerName")
+    }
+    
+    fun testMcpConnections() {
+        viewModelScope.launch {
+            appendLog("🔌 Testing MCP connections...")
+            
+            // Test Notion connection
+            val notionResult = clientManager.connectToNotionServer()
+            appendLog("Notion: ${if (notionResult) "✅ Connected" else "❌ Failed"}")
+            
+            // Test File System connection
+            val fsResult = clientManager.connectToFileSystemServer()
+            appendLog("File System: ${if (fsResult) "✅ Connected" else "❌ Failed"}")
+            
+            // Test Memory connection
+            val memoryResult = clientManager.connectToMemoryServer()
+            appendLog("Memory: ${if (memoryResult) "✅ Connected" else "❌ Failed"}")
+            
+            if (clientManager.isConnected()) {
+                // Test resource listing
+                val resources = clientManager.listResources()
+                appendLog("📋 Found ${resources.size} resources")
+                resources.take(3).forEach { resource ->
+                    appendLog("  - $resource")
+                }
+                
+                // Test available tools
+                val tools = clientManager.getAvailableTools()
+                appendLog("🔧 Found ${tools.size} tools")
+                tools.take(3).forEach { tool ->
+                    appendLog("  - $tool")
+                }
+                
+                // Test tool execution
+                appendLog("🛠️ Testing tool execution...")
+                val weatherResult = clientManager.callTool("get_weather", mapOf("location" to "横浜"))
+                if (weatherResult != null) {
+                    appendLog("🌦️ Weather result: $weatherResult")
+                }
+                
+                val memoryStoreResult = clientManager.callTool(
+                    "memory_operations", 
+                    mapOf(
+                        "operation" to "store",
+                        "key" to "test_key",
+                        "value" to "MCP test data"
+                    )
+                )
+                if (memoryStoreResult != null) {
+                    appendLog("💾 Memory result: $memoryStoreResult")
+                }
+            }
+            
+            appendLog("✨ MCP connection testing completed")
+        }
+    }
+    
+    fun testServerTools() {
+        viewModelScope.launch {
+            appendLog("🛠️ Testing local server tools...")
+            
+            if (!_state.value.isServerRunning) {
+                appendLog("❌ Server not running. Start server first.")
+                return@launch
+            }
+            
+            // Test local server tools
+            val weatherResult = serverManager.executeServerTool(
+                "get_weather", 
+                mapOf("location" to "横浜")
+            )
+            if (weatherResult != null) {
+                val content = weatherResult.content.firstOrNull()?.text ?: "No content"
+                appendLog("🌦️ Local weather tool: $content")
+            }
+            
+            val fileResult = serverManager.executeServerTool(
+                "file_operations",
+                mapOf(
+                    "operation" to "list",
+                    "path" to "/home/user"
+                )
+            )
+            if (fileResult != null) {
+                val content = fileResult.content.firstOrNull()?.text ?: "No content"
+                appendLog("📁 Local file tool: $content")
+            }
+            
+            val memoryResult = serverManager.executeServerTool(
+                "memory_operations",
+                mapOf(
+                    "operation" to "search",
+                    "query" to "test data"
+                )
+            )
+            if (memoryResult != null) {
+                val content = memoryResult.content.firstOrNull()?.text ?: "No content"
+                appendLog("💾 Local memory tool: $content")
+            }
+            
+            // Test reading local resources
+            val systemInfo = serverManager.readServerResource("system://info")
+            if (systemInfo.isNotEmpty()) {
+                val content = systemInfo.firstOrNull()?.text ?: "No content"
+                appendLog("📊 System info: $content")
+            }
+            
+            appendLog("✨ Local server tool testing completed")
+        }
+    }
+    
+    fun clearLogs() {
+        _state.value = _state.value.copy(logs = emptyList())
+        appendLog("Logs cleared")
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        serverManager.stopServer()
+        clientManager.disconnect()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppScreen(viewModel: MainViewModel = viewModel()) {
+    val uiState by viewModel.state.collectAsState()
+    val listState = rememberLazyListState()
+    var echoMessage by remember { mutableStateOf("Hello from Android!") }
+    var chatPrompt by remember { mutableStateOf("Tell me a fun fact about Android development") }
+    
+    // Auto scroll to bottom when new logs are added
+    LaunchedEffect(uiState.logs.size) {
+        if (uiState.logs.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.logs.size - 1)
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Header
+        Text(
+            text = "MCP Sample - OpenAI Edition",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        // Server Status
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Server Status: ${if (uiState.isServerRunning) "🟢 Running" else "🔴 Stopped"}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row {
+                    Button(
+                        onClick = viewModel::startServer,
+                        enabled = !uiState.isServerRunning
+                    ) {
+                        Text("Start Server")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = viewModel::stopServer,
+                        enabled = uiState.isServerRunning
+                    ) {
+                        Text("Stop Server")
+                    }
+                }
+            }
+        }
+        
+        // Test Actions
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Test Actions",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // First row of buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = viewModel::sendPing,
+                        enabled = uiState.isServerRunning,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Ping")
+                    }
+                    
+                    Button(
+                        onClick = { viewModel.sendEcho(echoMessage) },
+                        enabled = uiState.isServerRunning,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Echo")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Second row of buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = viewModel::testMcpConnections,
+                        enabled = uiState.isServerRunning,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Test MCP")
+                    }
+                    
+                    Button(
+                        onClick = viewModel::testServerTools,
+                        enabled = uiState.isServerRunning,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Test Tools")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = echoMessage,
+                    onValueChange = { echoMessage = it },
+                    label = { Text("Echo Message") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        }
+        
+        // OpenAI Chat
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🤖 ${AIService().getProviderName()}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    
+                    Button(
+                        onClick = viewModel::cycleAiProvider,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        val nextProvider = when (uiState.aiProvider) {
+                            AIProvider.GEMINI -> "OpenAI"
+                            AIProvider.OPENAI -> "Mock"
+                            AIProvider.MOCK -> "Gemini"
+                        }
+                        Text("Switch to $nextProvider")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = chatPrompt,
+                    onValueChange = { chatPrompt = it },
+                    label = { Text("Chat Prompt") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = { 
+                        if (chatPrompt.isNotBlank()) {
+                            viewModel.sendChat(chatPrompt)
+                            chatPrompt = "" // Clear after sending
+                        }
+                    },
+                    enabled = uiState.isServerRunning && chatPrompt.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    val providerName = when (uiState.aiProvider) {
+                        AIProvider.GEMINI -> "Gemini"
+                        AIProvider.OPENAI -> "OpenAI"
+                        AIProvider.MOCK -> "Mock AI"
+                    }
+                    Text("🚀 Send to $providerName")
+                }
+            }
+        }
+        
+        // Log Controls
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Logs (${uiState.logs.size})",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Button(
+                onClick = viewModel::clearLogs,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text("Clear")
+            }
+        }
+        
+        // Logs
+        Card(
+            modifier = Modifier.weight(1f)
+        ) {
+            if (uiState.logs.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No logs yet. Start the server and send some requests!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(uiState.logs) { log ->
+                        Text(
+                            text = log,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
