@@ -20,9 +20,16 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        // 環境変数からAPIキーを読み込むようにします
-        val openAiApiKey = System.getenv("OPENAI_API_KEY") ?: throw GradleException("OPENAI_API_KEY environment variable not set")
-        val geminiApiKey = System.getenv("GEMINI_API_KEY") ?: throw GradleException("GEMINI_API_KEY environment variable not set")
+        // gradle.properties に定義したキーを読む
+        val openAiApiKey: String = project.properties["OPENAI_API_KEY"]?.toString()
+            ?: throw GradleException(
+                "OPENAI_API_KEY が gradle.properties に見つかりません"
+            )
+        // gradle.properties に定義したキーだけを読む
+        val geminiApiKey: String = project.properties["OPENAI_API_KEY"]?.toString()
+            ?: throw GradleException(
+                "OPENAI_API_KEY が gradle.properties に見つかりません"
+            )
 
         // BuildConfigFields を設定
         // 環境変数から読み込んだ値を設定するように変更
