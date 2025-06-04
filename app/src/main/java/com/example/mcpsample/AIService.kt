@@ -1,12 +1,12 @@
 package com.example.mcpsample
 
 enum class AIProvider {
-    MOCK, OPENAI, GEMINI
+    MOCK, OPENAI, GEMINI, GEMINI_FUNCTIONS
 }
 
 class AIService {
     companion object {
-        var currentProvider = AIProvider.GEMINI // デフォルトをGeminiに設定
+        var currentProvider = AIProvider.GEMINI_FUNCTIONS // Function Calling対応Geminiをデフォルトに
     }
     
     private val openAiClient: OpenAIClient by lazy {
@@ -17,53 +17,74 @@ class AIService {
         GeminiClient(BuildConfig.GEMINI_API_KEY)
     }
     
-    // MCP統合用のクライアント
-    private val mcpClientManager = McpClientManager()
+    private val geminiFunctionClient: GeminiClientWithFunctions by lazy {
+        GeminiClientWithFunctions(BuildConfig.GEMINI_API_KEY)
+    }
     
     suspend fun sendChatMessage(prompt: String): String {
         return when (currentProvider) {
             AIProvider.MOCK -> generateMockResponse(prompt)
             AIProvider.OPENAI -> {
                 try {
-                    val enhancedPrompt = enhancePromptWithMcp(prompt)
-                    openAiClient.chatCompletion(enhancedPrompt)
+                    openAiClient.chatCompletion(prompt)
                 } catch (e: Exception) {
                     "OpenAI Error: ${e.message}"
                 }
             }
             AIProvider.GEMINI -> {
                 try {
-                    val enhancedPrompt = enhancePromptWithMcp(prompt)
-                    geminiClient.generateContent(enhancedPrompt)
+                    geminiClient.generateContent(prompt)
                 } catch (e: Exception) {
                     "Gemini Error: ${e.message}"
+                }
+            }
+            AIProvider.GEMINI_FUNCTIONS -> {
+                try {
+                    // 🛠️ Function Calling対応Geminiを使用
+                    geminiFunctionClient.generateContentWithTools(prompt)
+                } catch (e: Exception) {
+                    "Gemini Function Calling Error: ${e.message}"
                 }
             }
         }
     }
     
-    private suspend fun enhancePromptWithMcp(prompt: String): String {
-        // MCPツールが使用可能な場合、コンテキストを追加
-        val mcpContext = buildString {
-            append("あなたはMCP (Model Context Protocol) に対応したAIアシスタントです。\n")
-            append("以下のツールが利用可能です:\n")
-            append("- Notion API: ページ作成、データベース操作\n")
-            append("- Weather API: 天気情報取得\n")
-            append("- File System: ファイル操作\n")
-            append("- Memory: 情報の記憶と検索\n\n")
-            append("ユーザーの質問: $prompt")
-        }
-        
-        return mcpContext
-    }
-    
     private suspend fun generateMockResponse(prompt: String): String {
-        return "This is a mock response for: $prompt\n\nTo enable real AI responses, switch to OpenAI or Gemini mode using the provider toggle button."
+        return buildString {
+            append("🤖 Mock AI Response for: \"$prompt\"\n\n")
+            
+            when {
+                prompt.contains("天気") -> {
+                    append("天気情報のモック:\n")
+                    append("📍 横浜の天気: 晴れ\n")
+                    append("🌡️ 気温: 22°C\n")
+                    append("💧 湿度: 65%\n")
+                    append("💨 風速: 3 m/s")
+                }
+                prompt.contains("Notion") -> {
+                    append("Notionページ作成のモック:\n")
+                    append("📝 ページ「今日の学習記録」を作成しました\n")
+                    append("🆔 ページID: mock-page-123\n")
+                    append("✅ 作成完了")
+                }
+                prompt.contains("時刻") || prompt.contains("時間") -> {
+                    append("時刻情報のモック:\n")
+                    append("⏰ 現在時刻: 14:30:00\n")
+                    append("📅 今日の日付: 2025年6月4日 (水曜日)")
+                }
+                else -> {
+                    append("一般的なモック応答:\n")
+                    append("実際のAI機能を使用するには、プロバイダーを切り替えてください。\n")
+                    append("利用可能: OpenAI、Gemini、Gemini + Function Calling")
+                }
+            }
+        }
     }
     
     fun close() {
         openAiClient.close()
         geminiClient.close()
+        geminiFunctionClient.close()
     }
     
     fun getProviderName(): String {
@@ -71,6 +92,24 @@ class AIService {
             AIProvider.MOCK -> "Mock AI"
             AIProvider.OPENAI -> "OpenAI GPT-4o-mini"
             AIProvider.GEMINI -> "Google Gemini"
+            AIProvider.GEMINI_FUNCTIONS -> "Gemini with Function Calling"
+        }
+    }
+    
+    fun getAvailableProviders(): List<AIProvider> {
+        return AIProvider.values().toList()
+    }
+    
+    fun setProvider(provider: AIProvider) {
+        currentProvider = provider
+    }
+    
+    fun getNextProvider(): AIProvider {
+        return when (currentProvider) {
+            AIProvider.GEMINI_FUNCTIONS -> AIProvider.GEMINI
+            AIProvider.GEMINI -> AIProvider.OPENAI
+            AIProvider.OPENAI -> AIProvider.MOCK
+            AIProvider.MOCK -> AIProvider.GEMINI_FUNCTIONS
         }
     }
 }

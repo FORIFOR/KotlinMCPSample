@@ -25,10 +25,10 @@ android {
             ?: throw GradleException(
                 "OPENAI_API_KEY が gradle.properties に見つかりません"
             )
-        // gradle.properties に定義したキーだけを読む
-        val geminiApiKey: String = project.properties["OPENAI_API_KEY"]?.toString()
+        // gradle.properties に定義したGemini APIキーを読む
+        val geminiApiKey: String = project.properties["GEMINI_API_KEY"]?.toString()
             ?: throw GradleException(
-                "OPENAI_API_KEY が gradle.properties に見つかりません"
+                "GEMINI_API_KEY が gradle.properties に見つかりません"
             )
 
         // BuildConfigFields を設定

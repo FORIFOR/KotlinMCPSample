@@ -1,212 +1,242 @@
-# MCP Sample - Production Ready
+# MCP Sample - AI Function Calling Android アプリ
 
-Android MCP (Model Context Protocol) サンプルアプリケーション - 本番環境対応版
+## 📱 このアプリについて
 
-## 📱 アプリ概要
+**MCP Sample**は、AndroidスマートフォンでAI（人工知能）のFunction Calling（関数呼び出し）機能を体験できるサンプルアプリです。
 
-このアプリは、**Model Context Protocol (MCP)** の本格実装のためのベースアプリケーションです。MCPサーバーの管理とAI APIとの連携機能を提供し、実際のプロダクション環境での使用を想定しています。
+### 🤔 Function Callingって何？
 
-### 🌟 主な機能
+通常のAIチャットは「質問に答える」だけですが、Function Callingを使うとAIが**実際に行動を起こす**ことができます。
 
-- **MCPサーバー管理**: Android端末上でMCPサーバーの起動・停止
-- **AI統合**: OpenAI GPT-4o-mini / Google Gemini APIとの連携
-- **MCP接続管理**: 外部MCPサーバーへの接続とリソース管理
-- **拡張可能なアーキテクチャ**: 新しいMCPツールやサービスの追加が容易
-- **本番対応設計**: セキュリティとパフォーマンスを考慮した実装
+**例：**
+- 「今日の天気を教えて」→ AIが実際に天気APIから最新データを取得
+- 「Notionにメモして」→ AIが実際にNotionにページを作成
+- 「現在時刻は？」→ AIがスマホの時計から正確な時刻を取得
 
-## 🏗️ 技術スタック
+## 🚀 できること
 
-### 開発環境
-- **Android Studio**: 最新版推奨
-- **Kotlin**: 2.1.0
-- **Android API**: 最小26、ターゲット34
-- **Java**: 17
+### 1. 🌤️ 天気予報取得
+```
+「横浜の天気を教えて」
+```
+→ AIが気象APIから最新の天気データを取得してお答えします
 
-### 主要ライブラリ
-- **Jetpack Compose**: Modern Android UI toolkit
-- **Compose BOM**: 2024.06.00
-- **Coroutines**: 1.7.3 (非同期処理)
-- **Ktor Client**: 2.3.7 (HTTP通信)
-- **Kotlinx Serialization**: 1.7.3 (JSON処理)
+### 2. 📝 Notion連携
+```
+「今日の学習記録というタイトルでNotionページを作成して」
+```
+→ AIが実際にNotionワークスペースに新しいページを作成します
 
-### API統合
-- **OpenAI API**: GPT-4o-mini モデル
-- **Google Gemini API**: Gemini-1.5-flash-latest モデル
-- **MCP Protocol**: Model Context Protocol実装
+### 3. 🧠 メモリ機能
+```
+「test_keyで『重要な情報』をメモリに保存して」
+```
+→ AIがアプリ内にデータを保存し、後で呼び出せます
 
-## 🚀 セットアップ手順
+### 4. ⏰ システム情報
+```
+「現在の時刻を教えて」
+```
+→ AIがスマホから正確な日時情報を取得します
 
-### 1. プロジェクトのクローン
+## 🏗️ アプリの仕組み
+
+### アーキテクチャ概要
+```
+あなたの質問
+    ↓
+┌─────────────────┐
+│   Androidアプリ    │
+├─────────────────┤
+│ 1. AIサービス      │ ← プロバイダー選択（OpenAI/Gemini等）
+│ 2. Function呼び出し │ ← AIが必要な機能を判断
+│ 3. 実際のAPI実行   │ ← 天気/Notion/メモリ等
+└─────────────────┘
+    ↓
+実際の結果をお返し
+```
+
+### 主要コンポーネント
+
+#### 🤖 AIプロバイダー（4種類）
+1. **Mock AI** 🤖 - テスト用（インターネット不要）
+2. **OpenAI** 🧠 - ChatGPTのAPI
+3. **Gemini** 💎 - GoogleのAI（基本版）
+4. **Gemini + Tools** 🛠️ - Function Calling対応（推奨）
+
+#### 🔧 Function Tools
+- **Weather Service**: Open-Meteo API（無料天気予報）
+- **Notion Service**: Notion API（メモ・ドキュメント作成）
+- **Memory Service**: アプリ内データ保存
+- **System Service**: デバイス情報取得
+
+#### 📡 MCP（Model Context Protocol）
+- サーバー：ツール（機能）を提供
+- クライアント：AIからツールを呼び出し
+- 通信層：リクエスト・レスポンスの管理
+
+## 🛠️ セットアップ方法
+
+### 1. 必要なAPIキー
+
+#### Gemini API キー（必須）
+1. [Google AI Studio](https://makersuite.google.com/app/apikey) にアクセス
+2. 「Create API Key」をクリック
+3. 生成されたキーをコピー
+
+#### Notion API（Notion連携を使う場合）
+1. [Notion Developers](https://www.notion.so/my-integrations) にアクセス
+2. 「New integration」で新しい統合を作成
+3. 生成されたトークンをコピー
+4. 使用したいNotionページで統合を追加
+
+### 2. プロジェクトの設定
+
+#### gradle.properties ファイルの作成
+プロジェクトルートに `gradle.properties` ファイルを作成：
+
+```properties
+# API Keys
+GEMINI_API_KEY=your_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### 3. Android Studioでの実行
+
 ```bash
-git clone <repository-url>
-cd MCPSample
+1. Android Studioでプロジェクトを開く
+2. Build > Rebuild Project
+3. Run > Run 'app'
 ```
 
-### 2. OpenAI API キーの設定
-`app/build.gradle.kts`の以下の部分を編集：
-```kotlin
-buildConfigField("String", "OPENAI_API_KEY", "\"your_openai_api_key_here\"")
+## 📱 使い方
+
+### 基本的な操作手順
+
+1. **アプリを起動**
+2. **AIプロバイダーを選択**
+   - 「Gemini + Tools」を推奨（Function Calling対応）
+3. **質問を入力**
+   - 下のクイックテストボタンも使えます
+4. **結果を確認**
+   - ログエリアで詳細な実行過程を確認
+
+### 🎯 おすすめテストプロンプト
+
+#### 初心者向け
+```
+今日の東京の天気を教えて
 ```
 
-⚠️ **セキュリティ注意**: 本番アプリでは、API keyをより安全な方法（環境変数、暗号化ストレージなど）で管理してください。
+#### 中級者向け
+```
+横浜の天気をNotionの「今日の記録」ページに保存して
+```
 
-### 3. ビルドと実行
+#### 上級者向け
+```
+現在の時刻と天気を確認して、適切なコメントと一緒にNotionにまとめて
+```
+
+## 🔍 ログの見方
+
+アプリ下部のログエリアで実行状況を確認できます：
+
+### 正常な実行例
+```
+[14:30:15] 🤖 Sending to Gemini + Tools: 今日の横浜の天気を教えて
+[14:30:16] ⏳ Waiting for response...
+[14:30:18] 🔧 Function get_weather executed: {"success":true,"location":"横浜"}
+[14:30:18] ✅ Response received: 横浜の天気は晴れ、気温22°C...
+```
+
+### エラーの例
+```
+[14:30:15] ❌ Error: API key not found
+```
+
+## 🚨 トラブルシューティング
+
+### よくある問題と解決法
+
+#### 1. 「API key not found」エラー
+**原因**: APIキーが設定されていない
+**解決**: `gradle.properties` ファイルにAPIキーを正しく設定
+
+#### 2. Function Callingが動作しない
+**原因**: AIプロバイダーが「Gemini + Tools」以外に設定されている
+**解決**: 画面右上のプロバイダー切り替えボタンで「Gemini + Tools」を選択
+
+#### 3. Notion連携エラー
+**原因**: NotionのIntegration設定が不完全
+**解決**: 
+- Notion Integration Tokenが正しいか確認
+- 対象ページでIntegrationが追加されているか確認
+
+#### 4. ビルドエラー
+**解決**:
 ```bash
-./gradlew clean build
-./gradlew installDebug
+./gradlew clean
+rm -rf .gradle
+rm -rf app/build
 ```
 
-または Android Studio で:
-1. **Build** → **Clean Project**
-2. **Build** → **Rebuild Project**
-3. **Run** → **Run 'app'**
+### デバッグのコツ
 
-## 📋 使用方法
+1. **段階的テスト**
+   - まずMock AIで基本動作確認
+   - 次にGemini基本版でAPI接続確認
+   - 最後にFunction Calling機能をテスト
 
-### 基本操作
+2. **ログの活用**
+   - エラーメッセージを注意深く読む
+   - Function Call実行の各ステップを確認
 
-1. **サーバー起動**
-   - 「Start Server」ボタンでMCPサーバーを起動
-   - サーバーステータスが🟢に変化することを確認
+3. **Android Studio Logcat**
+   ```
+   フィルター: tag:MCPSample OR tag:System.out
+   ```
 
-2. **OpenAI チャット**
-   - チャットプロンプト欄にメッセージを入力
-   - 「🚀 Send to OpenAI」ボタンでGPT-4o-miniに送信
-   - レスポンスがログエリアに表示
+## 🎓 学習のポイント
 
-3. **MCP機能テスト**
-   - 「Test MCP」ボタンで各種MCP接続をテスト
-   - Notion、ファイルシステム、メモリサーバーの接続状況を確認
+### 初心者の方へ
+- まずはMock AIで基本操作に慣れましょう
+- ログを見ながらAIがどう動いているか観察してみてください
+- 簡単なプロンプトから始めて、徐々に複雑にしていきましょう
 
-4. **その他の機能**
-   - 「Send Ping」: サーバーの疎通確認
-   - 「Send Echo」: エコーテスト（カスタムメッセージ）
-   - 「Clear」: ログのクリア
+### 開発者の方へ
+- `FunctionRegistry.kt` でFunction定義を確認
+- `GeminiClientWithFunctions.kt` でAPI呼び出し実装を確認
+- `tools/ToolServices.kt` で実際のサービス連携を確認
 
-### UI構成
+## 🤝 貢献・カスタマイズ
 
-```
-┌─────────────────────────────────────┐
-│ MCP Sample - OpenAI Edition         │
-├─────────────────────────────────────┤
-│ 🟢 Server Status: Running           │
-│ [Start Server] [Stop Server]        │
-├─────────────────────────────────────┤
-│ Test Actions                        │
-│ [Send Ping] [Send Echo] [Test MCP]  │
-│ Echo Message: [入力フィールド]       │
-├─────────────────────────────────────┤
-│ 🤖 OpenAI Chat (GPT-4o-mini)       │
-│ Chat Prompt: [入力フィールド]        │
-│ [🚀 Send to OpenAI]                 │
-├─────────────────────────────────────┤
-│ Logs (count)              [Clear]   │
-│ ┌─────────────────────────────────┐ │
-│ │ [12:07:16.834] Server started   │ │
-│ │ [12:07:17.835] Sending to AI... │ │
-│ │ [12:07:18.793] ✅ AI response   │ │
-│ └─────────────────────────────────┘ │
-└─────────────────────────────────────┘
-```
+### 新しいFunction Toolの追加方法
 
-## 🧪 テスト機能
+1. **新しいサービスクラスを作成** (`tools/ToolServices.kt`)
+2. **Function定義を追加** (`tools/FunctionRegistry.kt`)
+3. **実行ロジックを実装** (`FunctionRegistry.executeFunction`)
 
-### 自動テスト項目
-- MCPサーバー起動/停止テスト
-- OpenAI API接続テスト
-- JSON シリアライゼーションテスト
-- エラーハンドリングテスト
-
-### 手動テスト推奨項目
-- [ ] サーバー起動後のUI状態変化
-- [ ] OpenAI APIレスポンスの表示
-- [ ] ネットワークエラー時の動作
-- [ ] ログの自動スクロール機能
-- [ ] 長時間実行時のメモリリーク確認
-
-## 🏛️ アーキテクチャ
-
-### ファイル構成
+### コード構造
 ```
 app/src/main/java/com/example/mcpsample/
-├── MainActivity.kt          # メインアクティビティ & UI
-├── MainViewModel.kt         # ビジネスロジック (ViewModelパターン)
-├── UiState.kt              # UI状態管理
-├── OpenAIClient.kt         # OpenAI API クライアント
-├── OpenAIService.kt        # OpenAI サービスラッパー
-├── OpenAIModels.kt         # OpenAI データモデル
-├── McpServerManager.kt     # MCPサーバー管理
-└── McpClientManager.kt     # MCPクライアント管理
+├── MainActivity.kt          # UI画面
+├── AIService.kt            # AIプロバイダー管理
+├── GeminiClientWithFunctions.kt  # Function Calling実装
+├── McpServer.kt            # MCPサーバー
+├── McpClient.kt            # MCPクライアント
+└── tools/
+    ├── FunctionRegistry.kt  # Function定義・実行
+    └── ToolServices.kt     # 実際のAPI呼び出し
 ```
 
-### 設計パターン
-- **MVVM**: Model-View-ViewModel アーキテクチャ
-- **StateFlow**: リアクティブな状態管理
-- **Coroutines**: 非同期処理とスレッド管理
-- **Dependency Injection**: 手動DI（将来的にDagger/Hilt移行予定）
+## 📚 関連技術・参考資料
 
-## 🔧 開発者向け情報
-
-### 既知の制限事項
-- MCP SDK統合は現在プレースホルダー実装
-- ストリーミングレスポンスは未実装
-- APIキーのセキュア管理は簡易実装
-
-### 今後の開発予定
-- [ ] 本格的なMCP SDK統合
-- [ ] ストリーミングレスポンス対応
-- [ ] セキュアなAPIキー管理
-- [ ] オフライン機能
-- [ ] パフォーマンス最適化
-- [ ] ユニットテスト拡充
-
-### カスタマイズポイント
-1. **OpenAI モデル変更**: `OpenAIClient.kt`の`model`パラメーター
-2. **UI テーマ**: `MCPSampleTheme`コンポーザブル
-3. **ログフォーマット**: `UiState.kt`の`createLogEntry`関数
-4. **MCP設定**: `McpServerManager.kt`のサーバー設定
-
-## 🤝 コントリビューション
-
-### 開発の参加方法
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/新機能名`)
-3. 変更をコミット (`git commit -am '新機能を追加'`)
-4. ブランチをプッシュ (`git push origin feature/新機能名`)
-5. プルリクエストを作成
-
-### コーディング規約
-- Kotlin公式スタイルガイドに準拠
-- Compose推奨パターンの使用
-- 適切なコメントと命名規則
-- エラーハンドリングの実装
-
-## 📄 ライセンス
-
-このプロジェクトはMITライセンスの下で公開されています。詳細は`LICENSE`ファイルを参照してください。
-
-## 🆘 サポート
-
-### よくある問題
-
-**Q: OpenAI APIエラーが発生する**
-A: API キーが正しく設定されているか確認してください。また、OpenAIアカウントに十分なクレジットがあることを確認してください。
-
-**Q: ビルドエラーが発生する**
-A: Kotlin 2.1.0とCompose BOM 2024.06.00の互換性を確認し、`./gradlew clean`を実行してください。
-
-**Q: MCPサーバーが起動しない**
-A: 現在プレースホルダー実装のため、実際のMCPサーバーは起動しません。ログでの動作確認となります。
-
-### バグ報告・機能要求
-GitHubのIssuesページで報告してください。以下の情報を含めてください：
-- Android バージョン
-- 実行環境（エミュレータ/実機）
-- エラーメッセージまたはログ
-- 再現手順
+- **MCP (Model Context Protocol)**: [公式ドキュメント](https://modelcontextprotocol.io/)
+- **Gemini API**: [Google AI Studio](https://makersuite.google.com/)
+- **Function Calling**: [OpenAI Documentation](https://platform.openai.com/docs/guides/function-calling)
+- **Android Jetpack Compose**: [公式ガイド](https://developer.android.com/jetpack/compose)
 
 ---
 
-**開発者**: [Your Name]  
-**最終更新**: 2025年6月3日  
-**バージョン**: 1.0.0
+このサンプルアプリを通じて、AI Function Callingの基本から実践的な活用まで学んでいただけます。質問やフィードバックがあれば、お気軽にお知らせください！
