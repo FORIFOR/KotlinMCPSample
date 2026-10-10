@@ -1,0 +1,30 @@
+{
+  "repo": "FORIFOR/KotlinMCPSample",
+  "branch": "main",
+  "tree_sha": "82a009222e108b9829d437047ee23ac448a402d8",
+  "tree_files": 48,
+  "read_files": [
+    {
+      "path": "README.md",
+      "sha": "3a9ebe46123fdfcfe4dc7d78b003d415b0d922eb"
+    },
+    {
+      "path": "app/build.gradle.kts",
+      "sha": "c90183ed9f7067101f7a38fadc1189736a581a4c"
+    },
+    {
+      "path": "build.gradle.kts",
+      "sha": "b033e7caa1a3722546f9f87d1a9feb732909af50"
+    },
+    {
+      "path": "app/src/main/java/com/example/mcpsample/MainActivity.kt",
+      "sha": "4372f6d592b925f13b4d5592e85ab9a5da734d72"
+    },
+    {
+      "path": "app/src/main/java/com/example/mcpsample/McpServer.kt",
+      "sha": "2c41431014f5140e1656e33f0750b606838111a0"
+    }
+  ],
+  "not_read_count": 43,
+  "scope": "initial entry-point and direct-import analysis; not exhaustive semantic scan"
+}

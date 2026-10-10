@@ -1,0 +1,10 @@
+graph TD
+    source["ソース\napp/src/main/java/com/example/mcpsample/McpServer.kt"]
+    n-android-util-log-01ae4d["android.util.Log\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-android-util-log-01ae4d
+    n-kotlinx-coroutines-3f2bab["kotlinx.coroutines.\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-kotlinx-coroutines-3f2bab
+    n-kotlinx-serialization-json-74d782["kotlinx.serialization.json.\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-kotlinx-serialization-json-74d782
+    n-java-util-concurrent-concurrenthashmap-aaf1d9["java.util.concurrent.ConcurrentHashMap\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-java-util-concurrent-concurrenthashmap-aaf1d9
